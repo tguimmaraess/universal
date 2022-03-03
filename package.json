@@ -85,7 +85,7 @@
     "express": "^4.15.2",
     "guess-parser": "^0.4.12",
     "http-proxy-middleware": "^2.0.0",
-    "jasmine": "^3.6.0",
+    "jasmine": "^4.0.0",
     "jasmine-core": "^4.0.0",
     "jsdom": "19.0.0",
     "minimatch": "^5.0.0",
