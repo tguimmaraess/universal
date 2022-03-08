@@ -76,9 +76,8 @@ However, on the server, there is no concept of "screen", and so this functionali
 
 You may read online and elsewhere that the recommended approach is to use `isPlatformBrowser` or
 `isPlatformServer`. This guidance is **incorrect**. This is because you wind up creating platform-specific
-code branches in your application code. This not only increases the size of your application unnecessarily,
-but it also adds complexity that then has to be maintained. By separating code into separate platform-specific
-modules and implementations, your base code can remain about business logic, and platform-specific exceptions
+code branches in your application code and will most likely have no effect. This not only increases the size of your application unnecessarily,
+but it also adds complexity that then has to be maintained. As of Angular 13 this can be easily done by separating components and modules in app.module and app.server.module files. Your base code can remain about business logic, and platform-specific exceptions
 are handled as they should be: on a case-by-case abstraction basis. This can be accomplished using Angular's Dependency
 Injection (DI) in order to remove the offending code and drop in a replacement at runtime. Here's an example:
 
@@ -119,14 +118,13 @@ import {ServerWindowService} from './server-window.service';
     useClass: ServerWindowService,
   }]
 })
+
 ```
+**For Third Party Libraries**
 
 If you have a component provided by a third-party that is not Universal-compatible out of the box,
-you can create two separate modules for browser and server (the server module you should already have),
-in addition to your base app module. The base app module will contain all of your platform-agnostic code,
-the browser module will contain all of your browser-specific/server-incompatible code, and vice-versa for
-your server module. In order to avoid editing too much template code, you can create a no-op component
-to drop in for the library component. Here's an example:
+you can import the components and library modules in `app.module.ts` and in your `app.server.module.ts`, you can simply import `ServerModule` and `BrowserModule` (with transition). The base app module will contain all of your browser platform code,
+the server module will contain the necessary modules to start the server. Here's an example:
 
 ```ts
 // example.component.ts
@@ -144,61 +142,33 @@ export class ExampleComponent {}
 // app.module.ts
 import {NgModule} from '@angular/core';
 import {ExampleComponent} from './example.component';
+import {BrowserModule} from '@angular/platform-browser';
 
 @NgModule({
-  declarations: [ExampleComponent],
+  declarations: [
+    ExampleComponent, //Component that uses the third party library
+    BrowserModule.withServerTransition({ appId: 'serverApp' })
+  ], 
+  imports: [thirdPartyLibraryModule] //Third party library module
 })
 ```
 
+
 ```ts
-// browser-app.module.ts
+//app.server.module.ts
 import {NgModule} from '@angular/core';
-import {LibraryModule} from 'some-lib';
-import {AppModule} from './app.module';
+import {AppModule } from './app.module'; //AppModule imported here but not added in NgModule imports
+import {ServerModule} from '@angular/platform-server';
+import {BrowserModule} from '@angular/platform-browser';
 
 @NgModule({
-  imports: [AppModule, LibraryModule],
+  imports: [ServerModule, BrowserModule.withServerTransition({ appId: 'serverApp' })],
+  declarations: [],
+  bootstrap: [AppComponent] 
 })
+export class AppServerModule {}
 ```
 
-```ts
-// library-shim.component.ts
-import { Component } from '@angular/core';
-
-@Component({
-  selector: 'library-component',
-  template: '',
-})
-export class LibraryShimComponent {}
-```
-
-```ts
-// server.app.module.ts
-import { NgModule } from '@angular/core';
-import { LibraryShimComponent } from './library-shim.component';
-import { AppModule } from './app.module';
-
-@NgModule({
-  imports: [AppModule],
-  declarations: [LibraryShimComponent],
-})
-export class ServerAppModule {}
-```
-
-#### Strategy 3: Shims
-
-If all else fails, and you simply must have access to some sort of browser functionality, you can patch
-the global scope of the server environment to include the globals you need. For instance:
-
-```ts
-// server.ts
-global['window'] = {
-  // properties you need implemented here...
-};
-```
-
-This can be applied to any undefined element. Please be careful when you do this, as playing with the global
-scope is generally considered an anti-pattern.
 
 > Fun fact: a shim is a patch for functionality that will never be supported on a given platform. A
 > polyfill is a patch for functionality that is planned to be supported, or is supported on newer versions
